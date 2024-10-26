@@ -99,8 +99,11 @@ async function analyzeEmailContent(subject, body, sentDate) {
       Always use the format YYYY-MM-DD HH:mm:ss for the date, even if the year is not explicitly mentioned (assume current year in that case). If time is not mentioned, assume 23:59:00. Respond in 24-hour time. Punctuation within the sentence is ok, but do not end the sentence with a period.
       If you can detect that a task is present, but cannot detect what the deadline should be (for example, if the deadline is stated as "next time we meet"), or if there is no deadline present at all, instead of YYYY-MM-DD HH:mm:ss, just say "Unknown | *task description*
       Your tasks should be written in a way that is helpful to have on a to-do list. For example, if the email says, "I'd love it if you completed worksheet 5.2 by Tuesday!", the task should be something like, "Finish Worksheet 5.2". 
+      For emails that are replies to other emails, answer *only the most recent email body*. Do not re-analyze the previous emails in the thread. For tasks that say they are due "in the afternoon", set the deadline to 5:00pm.
 
-      Each email may have more than one task, each with varying deadlines. Respond with each task in a newline-separated format.
+      Each email may have more than one task, each with varying deadlines. Respond with each task in a newline-separated format. You should be able to find dates for holidays or events, like Halloween, Christmas, the New Year, etc.
+
+      In all cases, respond with ONLY either "No" or the correctly formatted String ("YYYY-MM-DD HH:mm:ss | Give a short, 1-sentence description of the task, as described in the email"). Never include other explanations, prefaces, filler words, or anything else.
 
       Calculate relative dates based on the email sent date: ${sentDate}.
 
@@ -136,7 +139,7 @@ async function fetchAndAnalyzeEmails(oAuth2Client, email, lastLogin) {
   try {
     const response = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: lastLogin ? 100 : 10,
+      maxResults: lastLogin ? 100 : 30,
       q: query,
     });
 
