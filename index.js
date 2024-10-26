@@ -3,7 +3,10 @@ const express = require('express');
 const { google } = require('googleapis');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const { updateUserLastLogin, getUserLastLogin, updateCheckedEmail, getCheckedEmails, storeEmail, getStoredEmails } = require('./database');
+const Anthropic = require('@anthropic-ai/sdk');
+const { updateUserLastLogin, getUserLastLogin, updateCheckedEmail, getCheckedEmails, storeTask, getTasks } = require('./database');
+
+require('dotenv').config();
 
 const app = express();
 app.use(cookieParser());
@@ -16,12 +19,11 @@ app.set('views', path.join(__dirname, 'views'));
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile' // Ensure this scope is included
+  'https://www.googleapis.com/auth/userinfo.profile'
 ];
 const CREDENTIALS_PATH = 'credentials.json';
 const TOKEN_PATH = 'token.json';
 
-// Load client secrets from credentials.json
 const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
 const { client_secret, client_id, redirect_uris } = credentials.web;
 
@@ -31,7 +33,10 @@ const oAuth2Client = new google.auth.OAuth2(
   "http://localhost:3000/api/auth/callback/"
 );
 
-// Check if we have previously stored a token
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
 if (fs.existsSync(TOKEN_PATH)) {
   const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
   oAuth2Client.setCredentials(token);
@@ -83,44 +88,96 @@ app.get('/api/auth/callback/', async (req, res) => {
   }
 });
 
-async function fetchAndStoreEmails(oAuth2Client, email, lastLogin) {
+async function analyzeEmailContent(subject, body, sentDate) {
+  try {
+    const prompt = `
+      Analyze the following email for any mentions of tasks with deadlines. 
+      If there are no tasks with deadlines, respond with only the word "No". 
+      If there are tasks with deadlines, list each task in the format: 
+      MM/DD/YYYY | Give a short, 1-sentence description of the task, as described in the email
+
+      Calculate relative dates based on the email sent date: ${sentDate}.
+
+      Email Subject: ${subject}
+      Email Body: ${body}
+    `;
+
+    console.log('Sending prompt to Anthropic:', prompt);
+
+    const response = await anthropic.messages.create({
+      model: "claude-3-opus-20240229",
+      max_tokens: 300,
+      messages: [
+        { role: "user", content: prompt }
+      ]
+    });
+
+    console.log('Received response from Anthropic:', response.content[0].text);
+
+    return response.content[0].text.trim();
+  } catch (error) {
+    console.error('Error in analyzeEmailContent:', error);
+    throw error;
+  }
+}
+
+async function fetchAndAnalyzeEmails(oAuth2Client, email, lastLogin) {
   const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
   let query = lastLogin ? `after:${Math.floor(new Date(lastLogin).getTime() / 1000)}` : '';
 
-  const response = await gmail.users.messages.list({
-    userId: 'me',
-    maxResults: lastLogin ? 100 : 10,
-    q: query,
-  });
+  console.log('Fetching emails with query:', query);
 
-  if (response.data.messages) {
-    const emails = await Promise.all(
-      response.data.messages.map(async (message) => {
-        const msg = await gmail.users.messages.get({
-          userId: 'me',
-          id: message.id,
-        });
-        const headers = msg.data.payload.headers;
-        const subjectHeader = headers.find(header => header.name === 'Subject');
-        const subject = subjectHeader ? subjectHeader.value : 'No Subject';
-        const body = msg.data.snippet;
-        return { id: message.id, subject, body };
-      })
-    );
+  try {
+    const response = await gmail.users.messages.list({
+      userId: 'me',
+      maxResults: lastLogin ? 100 : 10,
+      q: query,
+    });
 
-    const filteredEmails = emails.filter(email => email.body.toLowerCase().includes('please'));
+    console.log('Fetched messages:', response.data.messages ? response.data.messages.length : 0);
 
-    // Store new emails containing "please"
-    for (const email of filteredEmails) {
-      await new Promise((resolve, reject) => {
-        storeEmail(email.id, email.subject, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
+    if (response.data.messages) {
+      const emails = await Promise.all(
+        response.data.messages.map(async (message) => {
+          const msg = await gmail.users.messages.get({
+            userId: 'me',
+            id: message.id,
+          });
+          const headers = msg.data.payload.headers;
+          const subjectHeader = headers.find(header => header.name === 'Subject');
+          const subject = subjectHeader ? subjectHeader.value : 'No Subject';
+          const body = msg.data.snippet;
+          const sentDate = new Date(parseInt(msg.data.internalDate));
+          
+          console.log('Analyzing email:', subject);
+          const analysis = await analyzeEmailContent(subject, body, sentDate);
+          console.log('Analysis result:', analysis);
+          
+          return { id: message.id, subject, analysis, sentDate };
+        })
+      );
+
+      for (const email of emails) {
+        if (email.analysis !== 'No') {
+          console.log('Storing task:', email.subject);
+          await new Promise((resolve, reject) => {
+            storeTask(email.id, email.subject, email.analysis, email.sentDate, (err) => {
+              if (err) {
+                console.error('Error storing task:', err);
+                reject(err);
+              } else {
+                resolve();
+              }
+            });
+          });
+        }
+      }
+
+      return emails;
     }
-
-    return filteredEmails;
+  } catch (error) {
+    console.error('Error in fetchAndAnalyzeEmails:', error);
+    throw error;
   }
 
   return [];
@@ -157,7 +214,7 @@ app.get('/dashboard', (req, res) => {
     }
 
     try {
-      await fetchAndStoreEmails(oAuth2Client, email, lastLogin);
+      await fetchAndAnalyzeEmails(oAuth2Client, email, lastLogin);
       const userProfile = await getUserProfile(oAuth2Client);
 
       updateUserLastLogin(email, (err) => {
@@ -168,11 +225,10 @@ app.get('/dashboard', (req, res) => {
 
       const lastLoginDisplay = lastLogin ? new Date(lastLogin).toLocaleString() : 'This is your first login';
 
-      // Fetch all stored emails and checked emails from the database
-      getStoredEmails((err, storedEmails) => {
+      getTasks((err, tasks) => {
         if (err) {
-          console.error('Error fetching stored emails:', err);
-          return res.status(500).send('Error fetching stored emails.');
+          console.error('Error fetching tasks:', err);
+          return res.status(500).send('Error fetching tasks.');
         }
 
         getCheckedEmails(email, (err, checkedEmailIds) => {
@@ -181,16 +237,17 @@ app.get('/dashboard', (req, res) => {
             return res.status(500).send('Error fetching checked emails.');
           }
 
-          // Separate current and completed tasks
-          const currentTasks = storedEmails.filter(email => !checkedEmailIds.includes(email.id));
-          const completedTasks = storedEmails.filter(email => checkedEmailIds.includes(email.id));
+          const currentTasks = tasks.filter(task => !checkedEmailIds.includes(task.id));
+          const completedTasks = tasks.filter(task => checkedEmailIds.includes(task.id));
+
+          console.log('Tasks to be rendered:', tasks);
 
           res.render('dashboard', {
             currentTasks: currentTasks,
             completedTasks: completedTasks,
             lastLoginDisplay: lastLoginDisplay,
             email: email,
-            userName: userProfile ? userProfile.name : 'User' // Use user's name or default to "User"
+            userName: userProfile ? userProfile.given_name || userProfile.name.split(' ')[0] : 'User'
           });
         });
       });
@@ -223,27 +280,6 @@ app.post('/logout', (req, res) => {
   res.redirect('/');
 });
 
-app.post('/clear-completed', (req, res) => {
-    const email = req.cookies.email;
-    
-    if (!email) {
-      return res.status(401).send('Unauthorized');
-    }
-  
-    // Clear completed tasks from the database
-    const query = `DELETE FROM checked_emails WHERE user_email = ?`;
-    
-    db.run(query, [email], function(err) {
-      if (err) {
-        console.error('Error clearing completed tasks:', err);
-        return res.status(500).send('Error clearing completed tasks.');
-      }
-      res.sendStatus(200);
-    });
-  });
-
 app.listen(3000, () => {
   console.log('App running on http://localhost:3000');
 });
-
-

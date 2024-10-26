@@ -19,97 +19,109 @@ db.serialize(() => {
     )
   `);
 
-   db.run(`
-     CREATE TABLE IF NOT EXISTS stored_emails (
-       id TEXT PRIMARY KEY,
-       subject TEXT
-     )
-   `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      subject TEXT,
+      description TEXT,
+      due_date TEXT,
+      email_date TEXT
+    )
+  `);
 });
 
 function updateUserLastLogin(email, callback) {
-   const lastLogin = new Date().toISOString();
-   db.run(
-     `INSERT INTO users (email, last_login)
+  const lastLogin = new Date().toISOString();
+  db.run(
+    `INSERT INTO users (email, last_login)
      VALUES (?, ?)
-     ON CONFLICT(email)
+     ON CONFLICT(email) 
      DO UPDATE SET last_login=excluded.last_login`,
-     [email,lastLogin],
-     callback
-   );
+    [email, lastLogin],
+    callback
+  );
 }
 
-function getUserLastLogin(email ,callback ) {
-
-   db.get(
-     `SELECT last_login FROM users WHERE email=?`,
-     [email],
-     (err,row )=>{
-
-       if(err)return callback(err);
-       callback(null,row?row.last_login:null);
-
-     }
-   );
+function getUserLastLogin(email, callback) {
+  db.get(
+    `SELECT last_login FROM users WHERE email = ?`,
+    [email],
+    (err, row) => {
+      if (err) return callback(err);
+      callback(null, row ? row.last_login : null);
+    }
+  );
 }
 
-function updateCheckedEmail(email,emailId ,checked ,callback ) {
-
-   if(checked){
-     db.run(
-       `INSERT OR IGNORE INTO checked_emails(user_email,email_id )VALUES (?, ?)`,
-       [email,emailId],
-       callback
-     );
-   }else{
-     db.run(
-       `DELETE FROM checked_emails WHERE user_email=? AND email_id=?`,
-       [email,emailId],
-       callback
-     );
-   }
+function updateCheckedEmail(email, emailId, checked, callback) {
+  if (checked) {
+    db.run(
+      `INSERT OR IGNORE INTO checked_emails (user_email, email_id) VALUES (?, ?)`,
+      [email, emailId],
+      callback
+    );
+  } else {
+    db.run(
+      `DELETE FROM checked_emails WHERE user_email = ? AND email_id = ?`,
+      [email, emailId],
+      callback
+    );
+  }
 }
 
-function getCheckedEmails(email ,callback ) {
-
-   db.all(
-     `SELECT email_id FROM checked_emails WHERE user_email=?`,
-     [email],
-     (err ,rows )=>{
-
-       if(err)return callback(err);
-       callback(null ,rows.map(row=>row.email_id));
-     }
-   );
+function getCheckedEmails(email, callback) {
+  db.all(
+    `SELECT email_id FROM checked_emails WHERE user_email = ?`,
+    [email],
+    (err, rows) => {
+      if (err) {
+        console.error('Error in getCheckedEmails:', err);
+        return callback(err);
+      }
+      const checkedEmailIds = rows.map(row => row.email_id);
+      console.log('Retrieved checked emails:', checkedEmailIds.length);
+      callback(null, checkedEmailIds);
+    }
+  );
 }
 
-function storeEmail(id ,subject ,callback ) {
+function storeTask(id, subject, analysis, emailDate, callback) {
+  const [description, dueDate] = analysis.split(' | ');
 
-   db.run(
-     `INSERT OR REPLACE INTO stored_emails(id ,subject )VALUES (?, ?)`,
-     [id ,subject],
-     callback
-   );
+  db.run(
+    `INSERT OR REPLACE INTO tasks (id, subject, description, due_date, email_date) VALUES (?, ?, ?, ?, ?)`,
+    [id, subject, description, dueDate, emailDate.toISOString()],
+    function(err) {
+      if (err) {
+        console.error('Error in storeTask:', err);
+      } else {
+        console.log('Task stored successfully. Row ID:', this.lastID);
+      }
+      callback(err);
+    }
+  );
 }
 
-function getStoredEmails(callback ) {
-
-   db.all(
-     `SELECT id ,subject FROM stored_emails`,
-     [],
-     (err ,rows )=>{
-
-       if(err)return callback(err);
-       callback(null ,rows.map(row=>({id :row.id ,subject :row.subject})));
-     }
-   );
+function getTasks(callback) {
+  db.all(
+    `SELECT * FROM tasks ORDER BY due_date ASC`,
+    [],
+    (err, rows) => {
+      if (err) {
+        console.error('Error in getTasks:', err);
+        return callback(err);
+      }
+      console.log('Retrieved tasks:', rows.length);
+      callback(null, rows);
+    }
+  );
 }
 
-module.exports={
-   updateUserLastLogin ,
-   getUserLastLogin ,
-   updateCheckedEmail ,
-   getCheckedEmails ,
-   storeEmail ,
-   getStoredEmails
+module.exports = {
+  updateUserLastLogin,
+  getUserLastLogin,
+  updateCheckedEmail,
+  getCheckedEmails,
+  storeTask,
+  getTasks
 };

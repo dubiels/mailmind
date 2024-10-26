@@ -1,3 +1,4 @@
 # Ignore credentials.json file
 credentials.json
 node_modules
+.env

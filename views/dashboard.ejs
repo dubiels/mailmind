@@ -6,23 +6,13 @@
     <title>Mailmind Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@500&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Outfit:wght@100..900&family=SUSE:wght@100..800&family=Zain:wght@200;300;400;700;800;900&display=swap');
-    
-        h1 {
-          font-family: 'Outfit', sans-serif;
-          font-weight: 900;
-        }
-    
-      </style>
 </head>
-<body class="bg-gradient-to-l from-slate-800 to-slate-950  min-h-screen">
+<body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto p-6">
-        <h1 class="text-5xl font-bold mt-12 mb-6 text-white">
-            Hey, <%= typeof userName !== 'undefined' ? userName : '' %> 👋
+        <h1 class="text-4xl font-bold mt-12 mb-6 text-gray-800">
+            Welcome, <%= userName %>!
         </h1>
-        <p class="mb-6 text-gray-500">Processed and scanned all emails received since your last login: <%= lastLoginDisplay %> ✅</p>
+        <p class="mb-6 text-gray-600">Last login: <%= lastLoginDisplay %></p>
         
         <div class="mb-6">
             <div class="border-b border-gray-200">
@@ -38,27 +28,33 @@
             
             <div id="current-tasks" class="mt-4">
                 <ul id="emailList">
-                    <% if (typeof currentTasks !== 'undefined' && currentTasks.length > 0) { %>
+                    <% if (currentTasks && currentTasks.length > 0) { %>
                         <% currentTasks.forEach(task => { %>
                             <li class="mb-2 p-2 bg-white rounded shadow" id="email-<%= task.id %>">
                                 <label class="flex items-center">
                                     <input type="checkbox" class="mr-2 form-checkbox h-5 w-5 text-blue-600" data-email-id="<%= task.id %>"
                                         onchange="updateCheckedEmail(this)">
-                                    <span class="text-gray-700"><%= task.subject %></span>
+                                    <span class="text-gray-700">
+                                        <strong><%= task.due_date %> | <%= task.description %></strong><br>
+                                        Fetched from: <%= task.subject %>, sent on <%= new Date(task.email_date).toLocaleString() %>
+                                    </span>
                                 </label>
                             </li>
                         <% }); %>
                     <% } else { %>
-                        <li class="text-gray-500">Nothing for now!</li>
+                        <li>No current tasks</li>
                     <% } %>
                 </ul>
             </div>
 
             <div id="completed-tasks" class="mt-4 hidden">
                 <ul id="completedList">
-                    <% if (typeof completedTasks !== 'undefined' && completedTasks.length > 0) { %>
+                    <% if (completedTasks && completedTasks.length > 0) { %>
                         <% completedTasks.forEach(task => { %>
-                            <li class="mb-2 p-2 bg-white rounded shadow line-through text-gray-500"><%= task.subject %></li>
+                            <li class="mb-2 p-2 bg-white rounded shadow line-through text-gray-500">
+                                <strong><%= task.due_date %> | <%= task.description %></strong><br>
+                                Fetched from: <%= task.subject %>, sent on <%= new Date(task.email_date).toLocaleString() %>
+                            </li>
                         <% }); %>
                     <% } else { %>
                         <li>No completed tasks</li>
@@ -86,12 +82,19 @@
             .then(() => {
                 const emailItem = document.getElementById(`email-${emailId}`);
                 const completedList = document.getElementById('completedList');
+                const currentList = document.getElementById('emailList');
                 if (checked) {
                     emailItem.remove();
                     const newCompletedItem = document.createElement('li');
                     newCompletedItem.className = 'mb-2 p-2 bg-white rounded shadow line-through text-gray-500';
-                    newCompletedItem.textContent = emailItem.querySelector('span').textContent;
+                    newCompletedItem.innerHTML = emailItem.querySelector('span').innerHTML;
                     completedList.appendChild(newCompletedItem);
+                    if (completedList.innerHTML.includes('No completed tasks')) {
+                        completedList.innerHTML = '';
+                    }
+                }
+                if (currentList.children.length === 0) {
+                    currentList.innerHTML = '<li>No current tasks</li>';
                 }
             })
             .catch(error => {
