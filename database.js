@@ -117,10 +117,61 @@ function getTasks(callback) {
   );
 }
 
+function clearCompletedTasks(email, callback) {
+  db.serialize(() => {
+    // First, get all the checked email IDs for the user
+    db.all(
+      `SELECT email_id FROM checked_emails WHERE user_email = ?`,
+      [email],
+      (err, rows) => {
+        if (err) {
+          console.error('Error fetching checked emails:', err);
+          return callback(err);
+        }
+
+        const checkedEmailIds = rows.map(row => row.email_id);
+
+        // If there are no checked emails, we're done
+        if (checkedEmailIds.length === 0) {
+          return callback(null);
+        }
+
+        // Delete the tasks associated with these email IDs
+        const placeholders = checkedEmailIds.map(() => '?').join(',');
+        db.run(
+          `DELETE FROM tasks WHERE id IN (${placeholders})`,
+          checkedEmailIds,
+          (err) => {
+            if (err) {
+              console.error('Error deleting tasks:', err);
+              return callback(err);
+            }
+
+            // Now delete the entries from checked_emails
+            db.run(
+              `DELETE FROM checked_emails WHERE user_email = ?`,
+              [email],
+              (err) => {
+                if (err) {
+                  console.error('Error clearing checked emails:', err);
+                  return callback(err);
+                }
+                console.log('Cleared completed tasks for user:', email);
+                callback(null);
+              }
+            );
+          }
+        );
+      }
+    );
+  });
+}
+
 module.exports = {
   updateUserLastLogin,
   getUserLastLogin,
   updateCheckedEmail,
+  clearCompletedTasks,
   getCheckedEmails,
   storeTask,
   getTasks

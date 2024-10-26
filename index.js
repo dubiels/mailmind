@@ -4,7 +4,7 @@ const { google } = require('googleapis');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
-const { updateUserLastLogin, getUserLastLogin, updateCheckedEmail, getCheckedEmails, storeTask, getTasks } = require('./database');
+const { updateUserLastLogin, getUserLastLogin, updateCheckedEmail, getCheckedEmails, storeTask, clearCompletedTasks, getTasks } = require('./database');
 
 require('dotenv').config();
 
@@ -279,6 +279,30 @@ app.post('/logout', (req, res) => {
   res.clearCookie('email');
   res.redirect('/');
 });
+
+app.post('/clear-completed', (req, res) => {
+    const email = req.body.email;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+  
+    clearCompletedTasks(email, (err) => {
+      if (err) {
+        console.error('Error clearing completed tasks:', err);
+        return res.status(500).json({ error: 'Error clearing completed tasks' });
+      }
+      
+      // After successfully clearing tasks, fetch the updated task list
+      getTasks((err, tasks) => {
+        if (err) {
+          console.error('Error fetching updated tasks:', err);
+          return res.status(500).json({ error: 'Error fetching updated tasks' });
+        }
+        res.json({ success: true, tasks: tasks });
+      });
+    });
+  });
 
 app.listen(3000, () => {
   console.log('App running on http://localhost:3000');
