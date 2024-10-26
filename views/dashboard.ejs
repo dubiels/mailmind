@@ -6,251 +6,198 @@
     <title>Mailmind Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+      // Check for saved theme preference or use system preference
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    </script>
   </head>
-  <body class="bg-gray-100 min-h-screen flex flex-col mt-12">
+  <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen flex flex-col mt-12">
     <div class="container mx-auto p-6 flex-grow">
-      <div class="flex justify-between items-center w-full">
-        <h3
-          class="font-extrabold text-3xl text-transparent bg-clip-text bg-gradient-to-r from-slate-800 via-blue-500 to-slate-600"
-        >
+      <div class="flex justify-between items-center w-full mb-6">
+        <h3 class="font-extrabold text-3xl text-transparent bg-clip-text bg-gradient-to-r from-slate-800 via-blue-500 to-slate-600 dark:from-slate-200 dark:via-blue-400 dark:to-slate-300">
           Mailmind
         </h3>
-        <form action="/logout" method="post">
-          <button
-            type="submit"
-            class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
-          >
-            Logout
-          </button>
-        </form>
+        <div class="flex items-center space-x-4">
+          <!-- <div class="flex items-center space-x-2">
+            <label for="theme-toggle" class="cursor-pointer inline-block">
+              <input type="checkbox" id="theme-toggle" class="sr-only peer" />
+              <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:peer-checked:bg-blue-600"></div>
+            </label>
+            <span id="theme-label" class="text-sm font-medium text-gray-900 dark:text-gray-300"></span>
+          </div> -->
+          <form action="/logout" method="post">
+            <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+              Logout
+            </button>
+          </form>
+        </div>
       </div>
 
-      <h1 class="text-5xl font-bold mt-2 mb-6 text-gray-800">
+      <h1 class="text-5xl font-bold mt-2 mb-6 text-gray-800 dark:text-gray-200">
         Hey, <%= userName %> 👋
       </h1>
-      <p class="mb-6 text-gray-600">
+      <p class="mb-6 text-gray-600 dark:text-gray-400">
         Previous most recent login: <%= lastLoginDisplay %>
       </p>
 
       <div class="mb-6">
-        <div class="border-b border-gray-200">
+        <div class="border-b border-gray-200 dark:border-gray-700">
           <ul class="flex flex-wrap -mb-px">
             <li class="mr-2">
-              <a
-                href="#"
-                class="inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg active"
-                id="current-tab"
-                onclick="switchTab('current')"
-                >Current Tasks</a
-              >
+              <a href="#" class="inline-block p-4 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 rounded-t-lg active" id="current-tab" onclick="switchTab('current')">Current Tasks</a>
             </li>
             <li class="mr-2">
-              <a
-                href="#"
-                class="inline-block p-4 text-gray-500 hover:text-gray-600 hover:border-gray-300 rounded-t-lg"
-                id="completed-tab"
-                onclick="switchTab('completed')"
-                >Completed Tasks</a
-              >
+              <a href="#" class="inline-block p-4 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 rounded-t-lg" id="completed-tab" onclick="switchTab('completed')">Completed Tasks</a>
             </li>
           </ul>
         </div>
 
         <div id="current-tasks" class="mt-4">
           <ul id="emailList">
-            <% if (currentTasks && currentTasks.length > 0) { %> <%
-            currentTasks.forEach(task => { %>
-            <li
-              class="mb-2 p-2 bg-white rounded shadow"
-              id="email-<%= task.id %>"
-            >
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  class="mr-2 form-checkbox h-5 w-5 text-blue-600"
-                  data-email-id="<%= task.id %>"
-                  onchange="updateCheckedEmail(this)"
-                />
-                <span class="text-gray-700">
-                  <strong><%= task.due_date %> | <%= task.description %></strong
-                  ><br />
-                  Fetched from: <%= task.subject %>, sent on <%= new
-                  Date(task.email_date).toLocaleString() %>
-                </span>
-              </label>
-            </li>
-            <% }); %> <% } else { %>
-            <li>No current tasks</li>
+            <% if (currentTasks && currentTasks.length > 0) { %>
+              <% currentTasks.forEach(task => { %>
+                <li class="mb-2 p-2 bg-white dark:bg-gray-800 rounded shadow" id="email-<%= task.id %>">
+                  <label class="flex items-center">
+                    <input type="checkbox" class="mr-5 ml-5 form-checkbox h-5 w-5 text-blue-600 dark:text-blue-400" data-email-id="<%= task.id %>" onchange="updateCheckedEmail(this)" />
+                    <span class="text-gray-700 dark:text-gray-300">
+                      <strong><%= task.due_date %> | <%= task.description %></strong><br />
+                      Fetched from: <%= task.subject %>, sent on <%= new Date(task.email_date).toLocaleString() %>
+                    </span>
+                  </label>
+                </li>
+              <% }); %>
+            <% } else { %>
+              <li class="text-gray-700 dark:text-gray-300">No current tasks</li>
             <% } %>
           </ul>
         </div>
 
         <div id="completed-tasks" class="mt-4 hidden">
           <ul id="completedList">
-            <% if (completedTasks && completedTasks.length > 0) { %> <%
-            completedTasks.forEach(task => { %>
-            <li
-              class="mb-2 p-2 bg-white rounded shadow line-through text-gray-500"
-            >
-              <strong><%= task.due_date %> | <%= task.description %></strong
-              ><br />
-              Fetched from: <%= task.subject %>, sent on <%= new
-              Date(task.email_date).toLocaleString() %>
-            </li>
-            <% }); %> <% } else { %>
-            <li>No completed tasks</li>
+            <% if (completedTasks && completedTasks.length > 0) { %>
+              <% completedTasks.forEach(task => { %>
+                <li class="mb-2 p-2 bg-white dark:bg-gray-800 rounded shadow line-through text-gray-500 dark:text-gray-400">
+                  <strong><%= task.due_date %> | <%= task.description %></strong><br />
+                  Fetched from: <%= task.subject %>, sent on <%= new Date(task.email_date).toLocaleString() %>
+                </li>
+              <% }); %>
+            <% } else { %>
+              <li class="text-gray-700 dark:text-gray-300">No completed tasks</li>
             <% } %>
           </ul>
-          <button
-            id="clear-completed"
-            class="mt-2 mb-2 bg-slate-700 hover:bg-slate-400 text-white font-bold py-2 px-4 rounded"
-          >
+          <button id="clear-completed" class="mt-2 mb-2 bg-slate-700 hover:bg-slate-600 dark:bg-slate-600 dark:hover:bg-slate-500 text-white font-bold py-2 px-4 rounded">
             Clear Completed Tasks
           </button>
         </div>
       </div>
     </div>
 
-   
-    <footer class="text-gray-800 text-center py-4 mb-2">
+    <footer class="text-gray-800 dark:text-gray-200 text-center py-4 mb-2">
       <div>
-          <p class="">Made by Karolina Dubiel for AI ATL 2024</p>
-          <div class="text-center items-center">
-              <p class="">
-                  <img
-                      src="https://upload.wikimedia.org/wikipedia/commons/1/14/Anthropic.png"
-                      style="height: 1.5em; display: inline; border-radius: 0.3em; margin-right: 0.2em"
-                  />&nbsp;<u>AI powered by Anthropic</u>
-              </p>
-          </div>
+        <p class="">Made by Karolina Dubiel for AI ATL 2024</p>
+        <div class="text-center items-center">
+          <p class="">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/1/14/Anthropic.png" style="height: 1.5em; display: inline; border-radius: 0.3em; margin-right: 0.2em;" />&nbsp;<u>AI powered by Anthropic</u>
+          </p>
+        </div>
       </div>
-  </footer>
+    </footer>
 
     <script>
-      function updateCheckedEmail(checkbox) {
-        const emailId = checkbox.dataset.emailId;
-        const checked = checkbox.checked;
-        axios
-          .post("/check-email", {
-            email: "<%= email %>",
-            emailId: emailId,
-            checked: checked,
-          })
-          .then(() => {
-            const emailItem = document.getElementById(`email-${emailId}`);
-            const completedList = document.getElementById("completedList");
-            const currentList = document.getElementById("emailList");
-            if (checked) {
-              emailItem.remove();
-              const newCompletedItem = document.createElement("li");
-              newCompletedItem.className =
-                "mb-2 p-2 bg-white rounded shadow line-through text-gray-500";
-              newCompletedItem.innerHTML =
-                emailItem.querySelector("span").innerHTML;
-              completedList.appendChild(newCompletedItem);
-              if (completedList.innerHTML.includes("No completed tasks")) {
-                completedList.innerHTML = "";
-              }
-            }
-            if (currentList.children.length === 0) {
-              currentList.innerHTML = "<li>No current tasks</li>";
-            }
-          })
-          .catch((error) => {
-            console.error("Error updating checked email:", error);
-            checkbox.checked = !checked; // Revert the checkbox state if there's an error
-          });
+      const themeToggle = document.getElementById('theme-toggle');
+      const themeLabel = document.getElementById('theme-label');
+
+      function updateTheme(isDark) {
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          themeLabel.textContent = 'Dark Mode';
+          themeToggle.checked = true;
+        } else {
+          document.documentElement.classList.remove('dark');
+          themeLabel.textContent = 'Light Mode';
+          themeToggle.checked = false;
+        }
+        localStorage.theme = isDark ? 'dark' : 'light';
       }
 
-      function switchTab(tabName) {
-        const currentTab = document.getElementById("current-tab");
-        const completedTab = document.getElementById("completed-tab");
-        const currentTasksDiv = document.getElementById("current-tasks");
-        const completedTasksDiv = document.getElementById("completed-tasks");
+      // Set initial state based on localStorage or system preference
+      updateTheme(localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches));
 
-        if (tabName === "current") {
-          currentTab.classList.add(
-            "text-blue-600",
-            "border-b-2",
-            "border-blue-600"
-          );
-          currentTab.classList.remove("text-gray-500");
-          completedTab.classList.remove(
-            "text-blue-600",
-            "border-b-2",
-            "border-blue-600"
-          );
-          completedTab.classList.add("text-gray-500");
-          currentTasksDiv.classList.remove("hidden");
-          completedTasksDiv.classList.add("hidden");
+      themeToggle.addEventListener('change', () => {
+        updateTheme(themeToggle.checked);
+      });
+
+      function switchTab(tabName) {
+        const currentTab = document.getElementById('current-tab');
+        const completedTab = document.getElementById('completed-tab');
+        const currentTasksDiv = document.getElementById('current-tasks');
+        const completedTasksDiv = document.getElementById('completed-tasks');
+
+        if (tabName === 'current') {
+          currentTab.classList.add('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400');
+          currentTab.classList.remove('text-gray-500', 'dark:text-gray-400');
+          completedTab.classList.remove('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400');
+          completedTab.classList.add('text-gray-500', 'dark:text-gray-400');
+          currentTasksDiv.classList.remove('hidden');
+          completedTasksDiv.classList.add('hidden');
         } else {
-          completedTab.classList.add(
-            "text-blue-600",
-            "border-b-2",
-            "border-blue-600"
-          );
-          completedTab.classList.remove("text-gray-500");
-          currentTab.classList.remove(
-            "text-blue-600",
-            "border-b-2",
-            "border-blue-600"
-          );
-          currentTab.classList.add("text-gray-500");
-          completedTasksDiv.classList.remove("hidden");
-          currentTasksDiv.classList.add("hidden");
+          completedTab.classList.add('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400');
+          completedTab.classList.remove('text-gray-500', 'dark:text-gray-400');
+          currentTab.classList.remove('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400');
+          currentTab.classList.add('text-gray-500', 'dark:text-gray-400');
+          completedTasksDiv.classList.remove('hidden');
+          currentTasksDiv.classList.add('hidden');
         }
       }
 
-      document
-        .getElementById("clear-completed")
-        .addEventListener("click", function () {
-          axios
-            .post("/clear-completed", {
-              email: "<%= email %>",
-            })
-            .then((response) => {
-              if (response.data.success) {
-                const completedList = document.getElementById("completedList");
-                completedList.innerHTML = "<li>No completed tasks</li>";
-
-                // Update the current tasks list
-                const currentList = document.getElementById("emailList");
-                const tasks = response.data.tasks;
-                if (tasks.length > 0) {
-                  currentList.innerHTML = tasks
-                    .map(
-                      (task) => `
-            <li class="mb-2 p-2 bg-white rounded shadow" id="email-${task.id}">
-              <label class="flex items-center">
-                <input type="checkbox" class="mr-2 form-checkbox h-5 w-5 text-blue-600" data-email-id="${
-                  task.id
-                }"
-                  onchange="updateCheckedEmail(this)">
-                <span class="text-gray-700">
-                  <strong>${task.due_date} | ${task.description}</strong><br>
-                  Fetched from: ${task.subject}, sent on ${new Date(
-                        task.email_date
-                      ).toLocaleString()}
-                </span>
-              </label>
-            </li>
-          `
-                    )
-                    .join("");
-                } else {
-                  currentList.innerHTML = "<li>No current tasks</li>";
-                }
-              } else {
-                throw new Error("Failed to clear tasks");
-              }
-            })
-            .catch((error) => {
-              console.error("Error clearing completed tasks:", error);
-              alert("Error clearing completed tasks. Please try again.");
-            });
+      function updateCheckedEmail(checkbox) {
+        const emailId = checkbox.dataset.emailId;
+        const checked = checkbox.checked;
+        axios.post('/check-email', {
+          email: '<%= email %>',
+          emailId: emailId,
+          checked: checked
+        })
+        .then(() => {
+          const emailItem = document.getElementById(`email-${emailId}`);
+          const completedList = document.getElementById('completedList');
+          const currentList = document.getElementById('emailList');
+          if (checked) {
+            emailItem.remove();
+            const newCompletedItem = document.createElement('li');
+            newCompletedItem.className = 'mb-2 p-2 bg-white dark:bg-gray-800 rounded shadow line-through text-gray-500 dark:text-gray-400';
+            newCompletedItem.innerHTML = emailItem.querySelector('span').innerHTML;
+            completedList.appendChild(newCompletedItem);
+            if (completedList.innerHTML.includes('No completed tasks')) {
+              completedList.innerHTML = '';
+            }
+          }
+          if (currentList.children.length === 0) {
+            currentList.innerHTML = '<li class="text-gray-700 dark:text-gray-300">No current tasks</li>';
+          }
+        })
+        .catch(error => {
+          console.error('Error updating checked email:', error);
+          checkbox.checked = !checked; // Revert the checkbox state if there's an error
         });
-    </script>
+      }
 
-   
+      document.getElementById('clear-completed').addEventListener('click', function() {
+        axios.post('/clear-completed', {
+          email: '<%= email %>'
+        })
+        .then(() => {
+          const completedList = document.getElementById('completedList');
+          completedList.innerHTML = '<li class="text-gray-700 dark:text-gray-300">No completed tasks</li>';
+        })
+        .catch(error => {
+          console.error('Error clearing completed tasks:', error);
+        });
+      });
+    </script>
   </body>
 </html>
