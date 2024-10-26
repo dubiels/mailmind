@@ -86,7 +86,7 @@ function getCheckedEmails(email, callback) {
 }
 
 function storeTask(id, subject, analysis, emailDate, callback) {
-  const [description, dueDate] = analysis.split(' | ');
+  const [dueDate, description] = analysis.split(' | ');
 
   db.run(
     `INSERT OR REPLACE INTO tasks (id, subject, description, due_date, email_date) VALUES (?, ?, ?, ?, ?)`,

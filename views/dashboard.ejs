@@ -39,50 +39,39 @@
         </div>
 
         <div id="current-tasks" class="mt-4">
-          <ul id="emailList">
-            <% if (currentTasks && currentTasks.length > 0) { %> <%
-            currentTasks.forEach(task => { %>
-            <li
-              class="mb-2 p-2 bg-white rounded shadow"
-              id="email-<%= task.id %>"
-            >
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  class="mr-2 form-checkbox h-5 w-5 text-blue-600"
-                  data-email-id="<%= task.id %>"
-                  onchange="updateCheckedEmail(this)"
-                />
-                <span class="text-gray-700">
-                  <strong><%= task.due_date %> | <%= task.description %></strong
-                  ><br />
-                  Fetched from: <%= task.subject %>, sent on <%= new
-                  Date(task.email_date).toLocaleString() %>
-                </span>
-              </label>
-            </li>
-            <% }); %> <% } else { %>
-            <li>No current tasks</li>
-            <% } %>
-          </ul>
+            <ul id="emailList">
+                <% if (currentTasks && currentTasks.length > 0) { %>
+                    <% currentTasks.forEach(task => { %>
+                        <li class="mb-2 p-2 bg-white rounded shadow" id="email-<%= task.id %>">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2 form-checkbox h-5 w-5 text-blue-600" data-email-id="<%= task.id %>"
+                                    onchange="updateCheckedEmail(this)">
+                                <span class="text-gray-700">
+                                    <strong><%= task.due_date %> | <%= task.description %></strong><br>
+                                    Fetched from: <%= task.subject %>, sent on <%= new Date(task.email_date).toLocaleString() %>
+                                </span>
+                            </label>
+                        </li>
+                    <% }); %>
+                <% } else { %>
+                    <li>No current tasks</li>
+                <% } %>
+            </ul>
         </div>
-
+        
         <div id="completed-tasks" class="mt-4 hidden">
-          <ul id="completedList">
-            <% if (completedTasks && completedTasks.length > 0) { %> <%
-            completedTasks.forEach(task => { %>
-            <li
-              class="mb-2 p-2 bg-white rounded shadow line-through text-gray-500"
-            >
-              <strong><%= task.due_date %> | <%= task.description %></strong
-              ><br />
-              Fetched from: <%= task.subject %>, sent on <%= new
-              Date(task.email_date).toLocaleString() %>
-            </li>
-            <% }); %> <% } else { %>
-            <li>No completed tasks</li>
-            <% } %>
-          </ul>
+            <ul id="completedList">
+                <% if (completedTasks && completedTasks.length > 0) { %>
+                    <% completedTasks.forEach(task => { %>
+                        <li class="mb-2 p-2 bg-white rounded shadow line-through text-gray-500">
+                            <strong><%= task.due_date %> | <%= task.description %></strong><br>
+                            Fetched from: <%= task.subject %>, sent on <%= new Date(task.email_date).toLocaleString() %>
+                        </li>
+                    <% }); %>
+                <% } else { %>
+                    <li>No completed tasks</li>
+                <% } %>
+            </ul>
           <button
             id="clear-completed"
             class="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"

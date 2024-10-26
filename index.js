@@ -91,10 +91,16 @@ app.get('/api/auth/callback/', async (req, res) => {
 async function analyzeEmailContent(subject, body, sentDate) {
   try {
     const prompt = `
-      Analyze the following email for any mentions of tasks with deadlines. 
+      Analyze the following email for any mentions of tasks or to-dos for the recipient. 
       If there are no tasks with deadlines, respond with only the word "No". 
       If there are tasks with deadlines, list each task in the format: 
-      MM/DD/YYYY | Give a short, 1-sentence description of the task, as described in the email
+      "YYYY-MM-DD HH:mm:ss | Give a short, 1-sentence description of the task, as described in the email"
+
+      Always use the format YYYY-MM-DD HH:mm:ss for the date, even if the year is not explicitly mentioned (assume current year in that case). If time is not mentioned, assume 23:59:00. Respond in 24-hour time. Punctuation within the sentence is ok, but do not end the sentence with a period.
+      If you can detect that a task is present, but cannot detect what the deadline should be (for example, if the deadline is stated as "next time we meet"), or if there is no deadline present at all, instead of YYYY-MM-DD HH:mm:ss, just say "Unknown | *task description*
+      Your tasks should be written in a way that is helpful to have on a to-do list. For example, if the email says, "I'd love it if you completed worksheet 5.2 by Tuesday!", the task should be something like, "Finish Worksheet 5.2". 
+
+      Each email may have more than one task, each with varying deadlines. Respond with each task in a newline-separated format.
 
       Calculate relative dates based on the email sent date: ${sentDate}.
 
